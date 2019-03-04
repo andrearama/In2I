@@ -42,7 +42,7 @@ class CycleGANModel(BaseModel):
         if self.isTrain:
             use_sigmoid = opt.no_lsgan
             self.netD_A = networks.define_D(opt.output_nc, opt.ndf,
-                                            opt.which_model_netD,
+                                            'conditioned',
                                             opt.n_layers_D, opt.norm, use_sigmoid, opt.init_type, self.gpu_ids)
             self.netD_B1=networks.define_D(opt.input_nc, opt.ndf,
                                             opt.which_model_netD,
@@ -143,11 +143,24 @@ class CycleGANModel(BaseModel):
         loss_D.backward()
         return loss_D
 
+    def backward_D_conditioned(self, netD, real, fake, label_real, label_fake):
+        # Real
+        pred_real = netD.forward(real, label_real)
+        loss_D_real = self.criterionGAN(pred_real, True)
+        # Fake
+        pred_fake = netD.forward(fake.detach(), label_fake)
+        loss_D_fake = self.criterionGAN(pred_fake, False)
+        # Combined loss
+        loss_D = (loss_D_real + loss_D_fake) * 0.5
+        # backward
+        loss_D.backward()
+        return loss_D
 
 
     def backward_D_A(self):
         fake_B = self.fake_B_pool.query(self.fake_B)
-        self.loss_D_A = self.backward_D_basic(self.netD_A, self.real_B, fake_B)
+        label_fake = self.fake_A3_pool.query(self.real_A3)
+        self.loss_D_A = self.backward_D_basic(self.netD_A, self.real_B, fake_B, label_real, label_fake)
 
     def backward_D_B(self):
         fake_A1 = self.fake_A1_pool.query(self.fake_A1)
@@ -180,7 +193,7 @@ class CycleGANModel(BaseModel):
         # GAN loss
         # D_A(G_A(A))
         self.fake_B, latent_fB = self.netG_A.forward(self.real_A1 ,self.real_A2, self.real_A3)
-        pred_fake = self.netD_A.forward(self.fake_B)
+        pred_fake = self.netD_A.forward(self.fake_B, self.real_A3)
         self.loss_G_A = self.criterionGAN(pred_fake, True)
 
         self.fake_A1, self.fake_A2, self.fake_A3, latent_fA = self.netG_B.forward(self.real_B)
