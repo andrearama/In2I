@@ -1119,25 +1119,47 @@ class NLayerDiscriminator(nn.Module):
                 norm_layer(ndf * nf_mult),
                 nn.LeakyReLU(0.2, True)
             ]
+        self.model = nn.Sequential(*sequence)
+#####################################################################
+      sequence1 = [
+            nn.Conv2d(3, ndf, kernel_size=kw, stride=2, padding=padw),
+            nn.LeakyReLU(0.2, True)
+        ]
 
+        nf_mult = 1
+        nf_mult_prev = 1
+        for n in range(1, n_layers):
+            nf_mult_prev = nf_mult
+            nf_mult = min(2**n, 8)
+            sequence1 += [
+                nn.Conv2d(ndf * nf_mult_prev, ndf * nf_mult,
+                          kernel_size=kw, stride=2, padding=padw, bias=use_bias),
+                norm_layer(ndf * nf_mult),
+                nn.LeakyReLU(0.2, True)
+            ]
+        self.model2 = nn.Sequential(*sequence1)            
+#####################################################################
         nf_mult_prev = nf_mult
         nf_mult = min(2**n_layers, 8)
-        sequence += [
-            nn.Conv2d(ndf * nf_mult_prev, ndf * nf_mult,
+        sequence2 = [
+            nn.Conv2d(2*ndf * nf_mult_prev, ndf * nf_mult,
                       kernel_size=kw, stride=1, padding=padw, bias=use_bias),
             norm_layer(ndf * nf_mult),
             nn.LeakyReLU(0.2, True)
         ]
 
-        sequence += [nn.Conv2d(ndf * nf_mult, 1, kernel_size=kw, stride=1, padding=padw)]
+        sequence2 += [nn.Conv2d(ndf * nf_mult, 1, kernel_size=kw, stride=1, padding=padw)]
 
         if use_sigmoid:
-            sequence += [nn.Sigmoid()]
+            sequence2 += [nn.Sigmoid()]
 
-        self.model = nn.Sequential(*sequence)
+        self.model3 = nn.Sequential(*sequence2)
 
-    def forward(self, input):
+    def forward(self, input, input2):
         if len(self.gpu_ids) and isinstance(input.data, torch.cuda.FloatTensor):
             return nn.parallel.data_parallel(self.model, input, self.gpu_ids)
         else:
-            return self.model(input)
+            a = self.model(input)
+            b = self.model2(input2)
+            c = torch.cat((a,b), -1)
+            return self.model3(c)
