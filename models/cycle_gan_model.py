@@ -165,7 +165,7 @@ class CycleGANModel(BaseModel):
     def backward_D_A(self):
         fake_B = self.fake_B_pool.query(self.fake_B)
         label_fake = self.fake_A3_pool.query(self.real_A3)
-        self.loss_D_A = self.backward_D_basic(self.netD_A, self.real_B, fake_B, self.real_Bla, label_fake)
+        self.loss_D_A = self.backward_D_conditioned(self.netD_A, self.real_B, fake_B, self.real_Bla, label_fake)
 
     def backward_D_B(self):
         fake_A1 = self.fake_A1_pool.query(self.fake_A1)

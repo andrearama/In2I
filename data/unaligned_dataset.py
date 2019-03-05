@@ -51,7 +51,7 @@ class UnalignedDataset(BaseDataset):
 #        A1 = self.transform(A1)
         B_img = Image.open(B_path)#.convert('RGB')
         B = self.transform(B_img)
-        B_lab = Image.open(B_path.replace("trainB","tralabelB"))
+        B_lab = Image.open(B_path.replace("trainB","tralabelB").replace("_leftImg8bit","_gtFine_color"))
         lable_B = self.transform(B_lab)
         if self.opt.which_direction == 'BtoA':
             input_nc = self.opt.output_nc
