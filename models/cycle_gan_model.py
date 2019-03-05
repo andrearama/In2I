@@ -25,6 +25,7 @@ class CycleGANModel(BaseModel):
         self.input_A2 = self.Tensor(nb, opt.input_nc2, size, size)
         self.input_A3 = self.Tensor(nb, 3, size, size)  #HC
         self.input_B = self.Tensor(nb, opt.output_nc, size, size)
+        self.label_B = self.Tensor(nb, 3, size, size)
 
         # load/define networks
         # The naming conversion is different from those used in the paper 
@@ -103,10 +104,12 @@ class CycleGANModel(BaseModel):
         input_A2 = input['A2']
         input_A3 = input['A3']
         input_B = input['B']
+        label_B = input['lable_B']
         self.input_A1.resize_(input_A1.size()).copy_(input_A1)
         self.input_A2.resize_(input_A2.size()).copy_(input_A2)
         self.input_A3.resize_(input_A3.size()).copy_(input_A3)
         self.input_B.resize_(input_B.size()).copy_(input_B)
+        self.label_B.resize_(label_B.size()).copy_(label_B)
         self.image_paths = input['A_paths' if AtoB else 'B_paths']
 
     def forward(self):
@@ -114,6 +117,7 @@ class CycleGANModel(BaseModel):
         self.real_A2 = Variable(self.input_A2)
         self.real_A3 = Variable(self.input_A3)
         self.real_B = Variable(self.input_B)
+        self.real_Bla =Variable(self.label_B) 
 
     def test(self):
         self.real_A1 = Variable(self.input_A1, volatile=True)   
@@ -123,6 +127,7 @@ class CycleGANModel(BaseModel):
         self.rec_A1, self.rec_A2, self.rec_A3,_ = self.netG_B.forward(self.fake_B)
          
         self.real_B = Variable(self.input_B, volatile=True)
+        self.real_Bla=Variable(self.label_B, volatile=True)
         self.fake_A1, self.fake_A2, self.fake_A3, _ = self.netG_B.forward(self.real_B)
         self.rec_B , _ = self.netG_A.forward(self.fake_A1, self.fake_A2, self.fake_A3)
 
@@ -160,7 +165,7 @@ class CycleGANModel(BaseModel):
     def backward_D_A(self):
         fake_B = self.fake_B_pool.query(self.fake_B)
         label_fake = self.fake_A3_pool.query(self.real_A3)
-        self.loss_D_A = self.backward_D_basic(self.netD_A, self.real_B, fake_B, label_real, label_fake)
+        self.loss_D_A = self.backward_D_basic(self.netD_A, self.real_B, fake_B, self.real_Bla, label_fake)
 
     def backward_D_B(self):
         fake_A1 = self.fake_A1_pool.query(self.fake_A1)
